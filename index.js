@@ -1,6 +1,6 @@
 const express = require("express");
-const { default: mongoose } = require("mongoose");
 const cors = require("cors");
+const mongoose = require("mongoose");
 require("dotenv").config();
 const User = require("./models/User");
 const bcrypt = require("bcryptjs");
@@ -11,9 +11,8 @@ const app = express();
 app.use(cors({ credentials: true, origin: "http://localhost:5173" }));
 app.use(express.json());
 
-//Database Connection
+//Databse Connection
 const MONGODB_URI = process.env.MONGODB_URI;
-console.log(MONGODB_URI);
 mongoose.connect(MONGODB_URI);
 
 app.get("/", (req, res) => {
@@ -56,7 +55,6 @@ app.post("/login", async (req, res) => {
     res.status(400).json("wrong credentials");
   }
 });
-
 //User logout
 app.post("/logout", (req, res) => {
   res.cookie("token", "").json("ok");
