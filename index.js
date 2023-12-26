@@ -89,6 +89,17 @@ app.post("/post", uploadMiddleware.single("file"), async (req, res) => {
   });
 });
 
+// ดึงข้อมูลโพสต์ทั้งหมด
+app.get('/posts', async (req, res) => {
+  try {
+      const posts = await Post.find();
+      res.json(posts);
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "ข้อผิดพลาดภายในเซิร์ฟเวอร์" });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log("Server is running on http://localhost:" + PORT);
