@@ -16,6 +16,7 @@ const app = express();
 app.use(cors({ credentials: true, origin: "http://localhost:5173" }));
 app.use(express.json());
 app.use(cookieParser());
+app.use("/uploads", express.static(__dirname+ "/uploads"));
 
 //Databse Connection
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -90,14 +91,49 @@ app.post("/post", uploadMiddleware.single("file"), async (req, res) => {
 });
 
 // ดึงข้อมูลโพสต์ทั้งหมด
-app.get('/posts', async (req, res) => {
-  try {
-      const posts = await Post.find();
-      res.json(posts);
-  } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "ข้อผิดพลาดภายในเซิร์ฟเวอร์" });
+app.get("/post", async (req, res) => {
+  res.json(
+      await Post.find()
+      .populate("author", ["username"])
+      .sort({createdAt: -1})
+      .limit(20)
+   );
+});
+
+app.get("/post/:id", async (req, res) => {
+  const {id} = req.params;
+  const postDoc = await Post.findById(id).populate("author", ["username"]);
+  //const postDoc = await Post.findOne({_id:id})
+  res.json(postDoc);
+});
+
+app.put("/post", uploadMiddleware.single("file"), async (req, res) => {
+  let newPath = null;
+  if(req.file) {
+    const { originalname, path } = req.file;
+    const parts = originalname.split(".");
+    const ext = parts[parts.length - 1];
+    newPath = path + "." + ext; 
+    fs.renameSync(path, newPath);
   }
+  const { token } = req.cookies;
+  jwt.verify(token, secret, async (err, info) => {
+    if (err) throw err;
+    const { id, title, summary, content } = req.body;
+    const postDoc = await Post.findById(id);
+    const isAuthor = JSON.stringify(postDoc.author._id) === JSON.stringify(info.id)
+    if(!isAuthor) {
+      return res.status(400).json("You are not the author");
+    }
+
+    await postDoc.updateOne({
+      title,
+      summary,
+      content,
+      cover: newPath ? newPath : postDoc.cover,
+    });
+    res.json(postDoc);
+  });
 });
 
 const PORT = process.env.PORT;
