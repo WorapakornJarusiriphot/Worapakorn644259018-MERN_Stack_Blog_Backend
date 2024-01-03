@@ -16,8 +16,8 @@ const app = express();
 app.use(cors({ credentials: true, origin: "http://localhost:5173" }));
 app.use(express.json());
 app.use(cookieParser());
-app.use("/uploads", express.static(__dirname+ "/uploads"));
-
+//set static(public) folder
+app.use("/uploads", express.static(__dirname + "/uploads"));
 //Databse Connection
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI);
@@ -50,11 +50,11 @@ app.post("/login", async (req, res) => {
   const isMatchedPassword = bcrypt.compareSync(password, userDoc.password);
   if (isMatchedPassword) {
     //logged in
-    jwt.sign({ username, id: userDoc }, secret, {}, (err, token) => {
+    jwt.sign({ username, id: userDoc._id }, secret, {}, (err, token) => {
       if (err) throw err;
       //Save data in cookie
       res.cookie("token", token).json({
-        id: userDoc.id,
+        id: userDoc._id,
         username,
       });
     });
@@ -93,15 +93,15 @@ app.post("/post", uploadMiddleware.single("file"), async (req, res) => {
 // ดึงข้อมูลโพสต์ทั้งหมด
 app.get("/post", async (req, res) => {
   res.json(
-      await Post.find()
+    await Post.find()
       .populate("author", ["username"])
-      .sort({createdAt: -1})
+      .sort({ createdAt: -1 })
       .limit(20)
-   );
+  );
 });
 
 app.get("/post/:id", async (req, res) => {
-  const {id} = req.params;
+  const { id } = req.params;
   const postDoc = await Post.findById(id).populate("author", ["username"]);
   //const postDoc = await Post.findOne({_id:id})
   res.json(postDoc);
@@ -109,11 +109,11 @@ app.get("/post/:id", async (req, res) => {
 
 app.put("/post", uploadMiddleware.single("file"), async (req, res) => {
   let newPath = null;
-  if(req.file) {
+  if (req.file) {
     const { originalname, path } = req.file;
     const parts = originalname.split(".");
     const ext = parts[parts.length - 1];
-    newPath = path + "." + ext; 
+    const newPath = path + "." + ext;
     fs.renameSync(path, newPath);
   }
   const { token } = req.cookies;
@@ -121,8 +121,9 @@ app.put("/post", uploadMiddleware.single("file"), async (req, res) => {
     if (err) throw err;
     const { id, title, summary, content } = req.body;
     const postDoc = await Post.findById(id);
-    const isAuthor = JSON.stringify(postDoc.author._id) === JSON.stringify(info.id)
-    if(!isAuthor) {
+    const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+    if (!isAuthor) {
+      console.log("not author");
       return res.status(400).json("You are not the author");
     }
 
